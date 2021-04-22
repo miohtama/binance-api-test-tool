@@ -11,16 +11,20 @@ Tutorials:
 
 """
 
+import logging
 from decimal import Decimal
 from dataclasses import dataclass
 
 import click
 from binance.client import Client
-
 from binance_testnet_tool.logs import setup_logging
+from tabulate import tabulate
 
 
-client = None
+logger = logging.getLogger()
+
+
+client: Client = None
 
 
 @dataclass
@@ -31,25 +35,35 @@ class BinanceUrlConfig:
 
     Looks like python-binance does not have direct support for Spot Testnet urls.
     """
-    api_end_point = "https://api.binance.{}/api/v1/"
-    user_stream_endpoint = "userDataStream"
-    wss_user_stream = "wss://stream.binance.{}:9443/ws/"
+
+    api_end_point: str
+    user_stream_endpoint: str
+    wss_user_stream: str
 
     def __init__(self, network: str):
         if network == "spot-testnet":
-            self.api_endpoint = "https://testnet.binance.vision/api/v1/"
+            self.api_end_point = "https://testnet.binance.vision/api"
             self.user_stream_endpoint = "userDataStream"
             self.wss_user_stream = "wss://testnet.binance.vision/ws/"
+        elif network == "production":
+            self.api_end_point = Client.API_URL
+            self.user_stream_endpoint = "userDataStream"
+            self.wss_user_stream = "wss://stream.binance.{}:9443/ws/"
+        else:
+            raise RuntimeError(f"Unknown Binance network {network}")
 
 
-def create_client(api_key, api_secret, testnet: bool):
+
+def create_client(api_key, api_secret, network: str):
     """Create Binance client with proper testnet configuration."""
+
+    # Patch the client for testnet if needed
+    urls = BinanceUrlConfig(network)
+    Client.API_URL = urls.api_end_point
+
     client = Client()
 
-    urls = BinanceUrlConfig(testnet)
-
-    # Patch the client
-    client.API_URL = urls.api_endpoint
+    logger.info("Binance client configured for %s, using API endpoint %s", network, client.API_URL)
     return client
 
 
@@ -67,9 +81,31 @@ def fetch_markets():
 
 
 @click.command()
-def ping():
-    """Ping API"""
-    client.ping()
+def status():
+    """Print exchange status
+
+    https://python-binance.readthedocs.io/en/latest/general.html
+    """
+    status = client.get_system_status()
+    print(f"The status of {client.API_URL} is: {status['msg']}")
+
+
+@click.command()
+def available_pairs():
+    """Available pairs for the user to trade.
+
+    https://python-binance.readthedocs.io/en/latest/general.html
+    """
+    tokens = client.get_all_tickers()
+    tokens = sorted(tokens, key=lambda x: x["symbol"])
+
+    def get_entries():
+        entries = []
+        for idx, token in enumerate(tokens):
+            yield idx + 1, token["symbol"], token["price"]
+
+    headers = ["#", "Symbol", "Midprice"]
+    print(tabulate(get_entries(), headers, floatfmt=".8f"))
 
 
 @click.group("Binance Spot Testnet command line tool")
@@ -84,7 +120,8 @@ def main(api_key, api_secret, network, log_level):
 
 
 main.add_command(fetch_markets)
-main.add_command(ping)
+main.add_command(status)
+main.add_command(available_pairs)
 
 
 if __name__ == "__main__":
