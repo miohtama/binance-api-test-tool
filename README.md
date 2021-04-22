@@ -1,4 +1,4 @@
-This is a command line tool for Binance to test your Binance API application code, orders and events. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/).
+This is a command line to test your Binance API application, orders and events. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/).
 
 The main use case is to fill your own limit orders on Binance Spot Testnet, or otherwise trigger and simulate events you receive over Binance API.
 
@@ -8,9 +8,11 @@ The main use case is to fill your own limit orders on Binance Spot Testnet, or o
 
 Binance Spot Testnet order books contain pretty much random data. To do meaningful tests, you need to play both sides of the market yourself: creating limit orders and creating market orders. You can use the same API key to trade against yourself.
 
+- Spot Testnet is shared with other users and is noisy
+
 - There is no frontend available for Binance Spot Testnet. All interaction must happen over the API.
 
-- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances
+- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances because you cannot set permissions for your API key on Binance Spot Testnet
 
 ## Prerequisites
 
@@ -18,29 +20,19 @@ You need to understand Python and UNIX command line basics.
 
 ## Features
 
-* Fetch available markets on Binance testnet
+* An easy to use command line client based on [Python click](https://click.palletsprojects.com/)
 
-* Fill your limit orderes on Binance testnet
+* Make orders, get your balances, etc. APIs needed to trade
 
-* Read parametes from command line or environment variables
+* HTTP request/response logging from Binance API 
 
-* Colored logging output
+* Websockets event streams 
 
-* Based on [python-binance](https://python-binance.readthedocs.io/)
+* Highly readabble colored console output
 
-## Installation
+* Uses on [python-binance](https://python-binance.readthedocs.io/) API wrapper
 
-Check out from Github.
-
-Install using [Poetry](https://python-poetry.org/).
-
-```shell
-# Activate a new environment in the check
-poetry shell
-
-# Install dependencies
-poetry install
-```
+* Configure with command line parameters or environment variables
 
 ## Usage
 
@@ -53,6 +45,22 @@ export BINANCE_API_KEY=...
 export BINANCE_API_SECRET=...
 export BINANCE_NETWORK="spot-testnet"
 ```
+
+The usual test flow is 
+
+# `balances` - get your testnet balances
+
+# `current-price` - check what is the current order book status
+
+# `order-event-stream` - listen to the order change event in stream (run this in another terminal)
+
+# `create-limit-order` - create a new limit order based on the price data
+
+# `orders` - show your active orders (you should have one limit order now)
+
+# `create-market-order` - fill your previously created limit order
+
+Now you should see your limit order filled in the event stream.
 
 ## Defaults
 
@@ -96,9 +104,41 @@ python binance_testnet_tool/main.py available-pairs
 1411  ZRXUSDT                1.58220000
 ```
 
+### Dumping HTTP request/responses
+
+Use `--log-level` flag.
+
+Example:
+
+```shell
+python binance_testnet_tool/main.py --log-level=debug create-limit-order --side=buy --price-amount=8000
+```
+
 ### Further usage help
 
 More usage information available with `--help` switch.
+
+## Development
+
+Python 3.8+.
+
+Check out from Github.
+
+Install using [Poetry](https://python-poetry.org/).
+
+```shell
+# Activate a new environment in the check
+poetry shell
+
+# Install dependencies
+poetry install
+```
+
+Run as 
+
+```shell
+python binance_testnet_tool/main.py
+```
 
 ## Contributions
 
@@ -108,7 +148,7 @@ I am not reading my Github status updates due to high volume updates I am receiv
 
 * [Binance API changelog](https://binance-docs.github.io/apidocs/spot/en/#change-log)
 
-* [Binance API changelog](https://binance-docs.github.io/apidocs/spot/en/#change-log)
+* [python-binance documentation](https://python-binance.readthedocs.io/)
 
 ## License
 

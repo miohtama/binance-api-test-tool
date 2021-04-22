@@ -19,8 +19,8 @@ def setup_logging(log_level=logging.INFO):
 
     # Disable all internal debug logging of requests and urllib3
     # E.g. HTTP traffic
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    # logging.getLogger("requests").setLevel(logging.WARNING)
+    # logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     # IPython notebook internal
     logging.getLogger("asyncio").setLevel(logging.WARNING)

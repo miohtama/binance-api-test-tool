@@ -18,9 +18,12 @@ from functools import partial
 
 import click
 from binance.client import Client
+from binance.websockets import BinanceSocketManager
 from binance_testnet_tool.logs import setup_logging
 from binance_testnet_tool.console import print_colorful_json
 from binance_testnet_tool.utils import quantize_price
+from binance_testnet_tool.utils import quantize_quantity
+from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance import enums as binance_enums
 from pycoingecko import CoinGeckoAPI
 from tabulate import tabulate
@@ -28,8 +31,9 @@ from tabulate import tabulate
 
 logger = logging.getLogger()
 
-
 client: Client = None
+
+bm: BinanceSocketManager = None
 
 # https://github.com/pallets/click/issues/646#issuecomment-435317967
 click.option = partial(click.option, show_default=True)
@@ -45,18 +49,17 @@ class BinanceUrlConfig:
     """
 
     api_end_point: str
-    user_stream_endpoint: str
-    wss_user_stream: str
+    stream_url: str
 
     def __init__(self, network: str):
         if network == "spot-testnet":
             self.api_end_point = "https://testnet.binance.vision/api"
-            self.user_stream_endpoint = "userDataStream"
-            self.wss_user_stream = "wss://testnet.binance.vision/ws/"
+            # self.user_stream_endpoint = "userDataStream"
+            self.stream_url = "wss://testnet.binance.vision/ws/"
         elif network == "production":
             self.api_end_point = Client.API_URL
-            self.user_stream_endpoint = "userDataStream"
-            self.wss_user_stream = "wss://stream.binance.{}:9443/ws/"
+            # self.user_stream_endpoint = "userDataStream"
+            self.stream_url = "wss://stream.binance.{}:9443/ws/"
         else:
             raise RuntimeError(f"Unknown Binance network {network}")
 
@@ -73,25 +76,23 @@ def create_client(api_key, api_secret, network: str):
 
     client = Client(api_key=api_key, api_secret=api_secret)
 
-    logger.info("Binance client configured for %s, using API endpoint: %s and API key: %s", network, client.API_URL, client.API_KEY)
-    return client
+    # Add our HTTP POST debug dumper
+    client.session.hooks["response"].append(hook_request_dump)
 
+    bm = BinanceSocketManager(client)
+    bm.STREAM_URL = urls.stream_url
 
-@click.command()
-@click.option('--market', default=None, help='Market where the order is made', required=True)
-def make_market_order(client: Client, market: str, side: str, amount: Decimal):
-    """Move the market."""
-    pass
+    logger.info("Binance client configured for %s, using API endpoint: %s, stream endpoint: %s, and API key: %s", network, client.API_URL, bm.STREAM_URL, client.API_KEY)
+    return client, bm
 
 
 @click.command()
 @click.option('--market', default="BTCUSDT", help='Market where the order is made', required=True)
-@click.option('--side', default="buy", help='Market where the order is made', required=True, type=click.Choice(['buy', 'sell']))
-@click.option('--quantity', default="0.001", help='Amount of base pair is being traded (e.g. BTC)', required=True)
+@click.option('--side', help='Are you buying or selling', type=click.Choice(['buy', 'sell']), required=True)
+@click.option('--quantity', default="0.01", help='Amount of base pair is being traded (e.g. BTC)', required=True, type=float)
 @click.option('--price-amount', default=None, help='Set price as quote pair (e.g. in Dollar)', required=False, type=float)
 @click.option('--price-percent', default=None, help='Set price as a +/- % to reference price based on Coingecko', required=False, type=float)
-@click.option('--expiry', default=None, help='Expiry time in seconds', required=False)
-def create_limit_order(market: str, side: str, quantity: float, price_amount: float, price_percent: float, expiry: float):
+def create_limit_order(market: str, side: str, quantity: float, price_amount: float, price_percent: float):
     """Add liquidity to the market.
 
     Show the Binance order execution results.
@@ -116,7 +117,7 @@ def create_limit_order(market: str, side: str, quantity: float, price_amount: fl
 
     # Always use decimals and present prices up a certain decimal
     price = quantize_price(price)
-    quantity = Decimal(quantity)
+    quantity = quantize_quantity(quantity)
 
     logger.info("Creating a %s limit order for %s, at %f for %f crypto", side, market, price, quantity)
 
@@ -128,26 +129,40 @@ def create_limit_order(market: str, side: str, quantity: float, price_amount: fl
         quantity=str(quantity),
         price=str(price))
 
-    print("Order created")
+    logger.info("Order created")
+    print_colorful_json(order)
+
+
+@click.command()
+@click.option('--market', default="BTCUSDT", help='Market where the order is made', required=True)
+@click.option('--side', help='Are you buying or selling', type=click.Choice(['buy', 'sell']), required=True)
+@click.option('--quantity', default="0.001", help='Amount of base pair is being traded (e.g. BTC)', required=True, type=float)
+def create_market_order(market: str, side: str, quantity: float):
+    """Move the market.
+
+    Binance markets orders do not have price.
+    """
+    quantity = quantize_quantity(quantity)
+    logger.info("Creating a %s market order for %s, for %f crypto", side, market, quantity)
+    order = client.create_order(
+        symbol=market,
+        side=binance_enums.SIDE_BUY if side == "buy" else binance_enums.SIDE_SELL,
+        type=binance_enums.ORDER_TYPE_MARKET,
+        quantity=str(quantity))
+    logger.info("Order created")
     print_colorful_json(order)
 
 
 @click.command()
 def status():
-    """Print exchange status
-
-    https://python-binance.readthedocs.io/en/latest/general.html
-    """
+    """Print exchange status"""
     status = client.get_system_status()
     print(f"The status of {client.API_URL} is: {status['msg']}")
 
 
 @click.command()
 def available_pairs():
-    """Available pairs for the user to trade
-
-    https://python-binance.readthedocs.io/en/latest/general.html
-    """
+    """Available pairs for the user to trade"""
     tokens = client.get_all_tickers()
     tokens = sorted(tokens, key=lambda x: x["symbol"])
 
@@ -163,10 +178,7 @@ def available_pairs():
 @click.command()
 @click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
 def symbol_info(symbol: str):
-    """Information on a single trading pair
-
-    https://python-binance.readthedocs.io/en/latest/general.html
-    """
+    """Information on a single trading pair"""
     info = client.get_symbol_info(symbol)
     print_colorful_json(info)
 
@@ -180,19 +192,26 @@ def current_price(symbol: str):
 
     print("Pair", symbol)
     print("Mid price:", avg["price"], "for the period of", avg["mins"], "minutes")
-    asks = sorted(depth["asks"], key=lambda x: x[0])
+    asks = sorted(depth["asks"], key=lambda x: float(x[0]))
     if asks:
         top_ask, top_ask_quantity = asks[0]
+        top_ask = float(top_ask)
         print("Ask top (most money you can make by buying):", top_ask)
     else:
+        top_ask = None
         print("No asks (nobody is selling)")
 
-    bids = sorted(depth["bids"], key=lambda x: -x[0])
+    bids = sorted(depth["bids"], key=lambda x: -float(x[0]))
     if bids:
         top_bid, top_bid_quantity = bids[0]
+        top_bid = float(top_bid)
         print("Bid top (most money you can make by selling):", top_bid)
     else:
+        top_bid = None
         print("No bids (nobody is buying)")
+
+    if top_ask and top_bid:
+        print("Spread", 100 * (top_ask - top_bid) / top_bid, "%")
 
 
 @click.command()
@@ -238,6 +257,24 @@ def cancel_all():
         client.cancel_order(symbol=o["symbol"], orderId=o["orderId"])
 
 
+@click.command()
+def order_event_stream():
+    """Open order event stream"""
+
+    def process_message(msg: dict):
+        logger.info("Received event %s", msg["e"])
+        print_colorful_json(msg)
+
+    logger.info("Connecting to the websockect")
+
+    # start any sockets here, i.e a trade socket
+    conn_key = bm.start_user_socket(process_message)
+    # then start the socket manager
+
+    logger.info("Connected - stream running - do some orders in another terminal")
+    bm.start()
+
+
 @click.group("Binance API Tester command line tool")
 @click.option('--api-key', default=None, help='Binance API key', required=True, envvar="BINANCE_API_KEY")
 @click.option('--api-secret', default=None, help='Binance API secret', required=True, envvar="BINANCE_API_SECRET")
@@ -245,18 +282,22 @@ def cancel_all():
 @click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
 def main(api_key, api_secret, network, log_level):
     global client
+    global bm
     setup_logging(log_level)
-    client = create_client(api_key, api_secret, network)
+    client, bm = create_client(api_key, api_secret, network)
+    # Here jumps to the subcommand by click
 
 
 main.add_command(status)
 main.add_command(available_pairs)
 main.add_command(symbol_info)
 main.add_command(create_limit_order)
+main.add_command(create_market_order)
 main.add_command(current_price)
 main.add_command(balances)
 main.add_command(orders)
 main.add_command(cancel_all)
+main.add_command(order_event_stream)
 
 
 if __name__ == "__main__":
