@@ -274,10 +274,42 @@ def order_event_stream():
     logger.info("Connected - stream running - do some orders in another terminal")
     bm.start()
 
+@click.command()
+def version():
+    """Print version to stdout and exit"""
+    import binance_testnet_tool
+    print(binance_testnet_tool.__version__)
+
+
+@click.command()
+def console():
+    """Interactive IPython console session"""
+    imported_objects = {}
+    import datetime
+    from IPython import embed
+
+    imported_objects["client"] = client
+    imported_objects["bm"] = bm
+    imported_objects["datetime"] = datetime
+    imported_objects["tabulate"] = tabulate
+    imported_objects["print_colorful_json"] = print_colorful_json
+
+    print('')
+    print('Following classes and objects are available:')
+    for var, val in imported_objects.items():
+        line = "{key:30}: {value}".format(
+            key=var,
+            value=str(val).replace('\n', ' ').replace('\r', ' ')
+        )
+        print(line)
+    print('')
+
+    embed(user_ns=imported_objects, colors="Linux")
+
 
 @click.group("Binance API Tester command line tool")
-@click.option('--api-key', default=None, help='Binance API key', required=True, envvar="BINANCE_API_KEY")
-@click.option('--api-secret', default=None, help='Binance API secret', required=True, envvar="BINANCE_API_SECRET")
+@click.option('--api-key', default=None, help='Binance API key', required=False, envvar="BINANCE_API_KEY")
+@click.option('--api-secret', default=None, help='Binance API secret', required=False, envvar="BINANCE_API_SECRET")
 @click.option('--log-level', default="info", help='Python logging level', required=False)
 @click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
 def main(api_key, api_secret, network, log_level):
@@ -298,6 +330,8 @@ main.add_command(balances)
 main.add_command(orders)
 main.add_command(cancel_all)
 main.add_command(order_event_stream)
+main.add_command(version)
+main.add_command(console)
 
 
 if __name__ == "__main__":

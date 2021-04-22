@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "binance-testnet-limit-filler"
+name = "binance_testnet_tool"
 version = "0.1.0"
 description = ""
-authors = ["Mikko Ohtamaa <mikko@opensourcehacker.com>"]
+authors = ["Mikko Ohtamaa <mikko@capitalgram.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -12,6 +12,7 @@ coloredlogs = "^15.0"
 tabulate = "^0.8.9"
 Pygments = "^2.8.1"
 pycoingecko = "^1.4.1"
+ipython = "^7.22.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -19,3 +20,6 @@ pytest = "^5.2"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+binance-testnet-tool = "binance_testnet_tool.maim:main"

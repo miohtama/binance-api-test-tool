@@ -1,26 +1,32 @@
-This is a command line to test your Binance API application, orders and events. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/).
+This is a command line to test your Binance API application, orders and events. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
 
-The main use case is to fill your own limit orders on Binance Spot Testnet, or otherwise trigger and simulate events you receive over Binance API.
+* [Github](https://github.com/miohtama/binance-api-test-tool)
 
-[For more information about trade execution and bot development, contact Capitalgram](https://capitalgram.com)
+* [Docker GHub](https://github.com/miohtama/binance-api-test-tool)
+
+[For more information about Binance trade execution and bot development, contact Capitalgram.](https://capitalgram.com).
 
 ## About Binance Spot Testnet
 
 Binance Spot Testnet order books contain pretty much random data. To do meaningful tests, you need to play both sides of the market yourself: creating limit orders and creating market orders. You can use the same API key to trade against yourself.
 
-- Spot Testnet is shared with other users and is noisy
+- Spot Testnet is shared with other users and is noisy.
+
+- Order books are in funny states and have ridiculous prices, so e.g. arbitrage bot testing is difficult.
 
 - There is no frontend available for Binance Spot Testnet. All interaction must happen over the API.
 
-- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances because you cannot set permissions for your API key on Binance Spot Testnet
+- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances because you cannot set permissions for your API key on Binance Spot Testnet.
 
 ## Prerequisites
 
 This software works on Windows, macOS and Linux.
 
-You need to understand command line basics.
+* You need to understand command line basics.
 
-You need to be able to use [Docker](https://www.docker.com/).
+* You need to be able to use [Docker](https://www.docker.com/).
+
+* You need to have a Binance API key
 
 ## Installation
 
@@ -30,7 +36,7 @@ You need to have Docker properly configured on your computer.
 First create an alias to run the application:
 
 ```shell
-alias binance-api-test-tool='docker run miohtama/binance-api-test-tool:latest'
+alias binance-api-test-tool='docker run -it -e BINANCE_API_KEY -e BINANCE_API_SECRET -e BINANCE_NETWORK miohtama/binance-api-test-tool:latest'
 ```
 
 Then you can run the tool:
@@ -39,11 +45,39 @@ Then you can run the tool:
 binance-ai-test-tool --help
 ```
 
+You will get overview of commands:
+
+```
+Usage: docker-entrypoint.py [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --api-key TEXT                  Binance API key  [required]
+  --api-secret TEXT               Binance API secret  [required]
+  --log-level TEXT                Python logging level  [default: info]
+  --network [production|spot-testnet]
+                                  Binance API endpoint to use  [required]
+  --help                          Show this message and exit.
+
+Commands:
+  available-pairs      Available pairs for the user to trade
+  balances             Account balances
+  cancel-all           Cancel all open orders
+  create-limit-order   Add liquidity to the market.
+  create-market-order  Move the market.
+  current-price        Current price info for a trading pair
+  order-event-stream   Open order event stream
+  orders               Open orders
+  status               Print exchange status
+  symbol-info          Information on a single trading pair
+```
+
 ## Features
 
 * An easy to use command line client based on [Python click](https://click.palletsprojects.com/)
 
 * Make orders, get your balances, etc. APIs needed to trade
+
+* Interactive Python console to explore Binance APIs using [IPython](https://github.com/ipython/ipython)
 
 * HTTP request/response logging from Binance API 
 
@@ -87,18 +121,7 @@ Now you should see your limit order filled in the event stream.
 
 Some command requires you to specify order book. Because this is a testnet tool, unless you specify anything, we default to BTCUSDT order book, buy order and amount of 0.1 BTC. This is for the tool to be more wrist friendly.
 
-
 ## Command examples
-
-### Help
-
-```shell
-python binance_testnet_tool/main.py --help
-```
-
-```
-
-```
 
 ### Available trading pairs
 
@@ -159,6 +182,33 @@ Run as
 
 ```shell
 python binance_testnet_tool/main.py
+```
+
+### Building and releasing Docker image
+
+Build Docker:
+
+```shell
+docker build -t miohtama/binance-api-test-tool:latest .
+```
+
+Test it:
+
+```shell
+docker run miohtama/binance-api-test-tool:latest 
+```
+
+Pop open a shell in Docker:
+
+```shell
+docker run -it --entrypoint /bin/sh miohtama/binance-api-test-tool:latest  
+```
+
+Publish on DockerHub:
+
+```shell
+docker login
+./release.sh
 ```
 
 ## Contributions
