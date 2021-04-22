@@ -4,7 +4,7 @@ This is a command line to test your Binance API application, orders and events f
 
 * [Docker GHub](https://github.com/miohtama/binance-api-test-tool)
 
-![An example IPython session](demo.png)
+![An example IPython session](./demo.gif)
 
 For more information about [Binance trade execution and bot development, contact authors at Capitalgram](https://capitalgram.com).
 
