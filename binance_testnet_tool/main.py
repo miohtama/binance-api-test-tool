@@ -1,4 +1,4 @@
-"""
+"""Binance API test tool.
 
 Make a marker order on Binance Spot Testnet to move the market.
 
@@ -26,6 +26,7 @@ from binance_testnet_tool.utils import quantize_quantity
 from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance import enums as binance_enums
 from pycoingecko import CoinGeckoAPI
+from dotenv import load_dotenv
 from tabulate import tabulate
 
 
@@ -327,11 +328,18 @@ def console():
 @click.option('--api-key', default=None, help='Binance API key', required=False, envvar="BINANCE_API_KEY")
 @click.option('--api-secret', default=None, help='Binance API secret', required=False, envvar="BINANCE_API_SECRET")
 @click.option('--log-level', default="info", help='Python logging level', required=False)
+@click.option('--config-file', default=None, help='Read environment variables from this INI config file', required=False, type=click.Path(exists=True))
 @click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
-def main(api_key, api_secret, network, log_level):
+def main(api_key, api_secret, network, log_level, config_file):
     global client
     global bm
     setup_logging(log_level)
+
+    # Read the configuratation
+    if config_file:
+        load_dotenv(dotenv_path=config_file, verbose=True)
+        logger.info("Loaded API keys from %s", config_file)
+
     client, bm = create_client(api_key, api_secret, network)
     # Here jumps to the subcommand by click
 

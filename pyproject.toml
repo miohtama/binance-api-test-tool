@@ -14,6 +14,7 @@ Pygments = "^2.8.1"
 pycoingecko = "^1.4.1"
 ipython = "^7.22.0"
 ipdb = "^0.13.7"
+python-dotenv = "^0.17.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

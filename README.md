@@ -1,22 +1,28 @@
-This is a command line to test your Binance API application, orders and events. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
+This is a command line to test your Binance API application, orders and events from command prompt and Python console. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
 
 * [Github](https://github.com/miohtama/binance-api-test-tool)
 
 * [Docker GHub](https://github.com/miohtama/binance-api-test-tool)
 
+![An example IPython session](./demo.png)
+
 [For more information about Binance trade execution and bot development, contact Capitalgram.](https://capitalgram.com).
 
 ## About Binance Spot Testnet
 
-Binance Spot Testnet order books contain pretty much random data. To do meaningful tests, you need to play both sides of the market yourself: creating limit orders and creating market orders. You can use the same API key to trade against yourself.
+[Binance Spot Testnet](https://testnet.binance.vision/) is a Binance matching engine with test money and some order books. You can get an API key with a Github account. 
+
+Some important notes about Binance Spot Testnet
+
+- Spot Testnet is good for integration testing for your application code.
 
 - Spot Testnet is shared with other users and is noisy.
 
-- Order books are in funny states and have ridiculous prices, so e.g. arbitrage bot testing is difficult.
+- Order books are in funny states because other users testing and have ridiculous prices, so e.g. arbitrage bot testing is difficult.
 
 - There is no frontend available for Binance Spot Testnet. All interaction must happen over the API.
 
-- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances because you cannot set permissions for your API key on Binance Spot Testnet.
+- Looks like all API endpoints under withdraw section do not seem to work: e.g. a your balances query fails because you cannot set the required Withdraw permissions for your API key on Binance Spot Testnet.
 
 ## Prerequisites
 
@@ -36,7 +42,7 @@ You need to have Docker properly configured on your computer.
 First create an alias to run the application:
 
 ```shell
-alias binance-api-test-tool='docker run -it -e BINANCE_API_KEY -e BINANCE_API_SECRET -e BINANCE_NETWORK miohtama/binance-api-test-tool:latest'
+alias binance-api-test-tool='docker run -it -v `pwd`:`pwd` -w `pwd` -e BINANCE_API_KEY -e BINANCE_API_SECRET -e BINANCE_NETWORK miohtama/binance-api-test-tool:latest'
 ```
 
 Then you can run the tool:
@@ -91,15 +97,35 @@ Commands:
 
 ## Usage
 
+### Setting up API keys
+
 Get keys from [Binance Spot Testnet](https://testnet.binance.vision/).
 
-Give the given Binance API endpoint and keys as environment variales:
+Give the given Binance API endpoint and keys as environment variales before running `binance-api-test-tool`:
 
 ```shell
 export BINANCE_API_KEY=... 
 export BINANCE_API_SECRET=...
 export BINANCE_NETWORK="spot-testnet"
 ```
+
+Alternatively you can use [.env config file](https://pypi.org/project/python-dotenv/).
+
+A sample `.env`:
+
+```ini
+BINANCE_API_KEY=... 
+BINANCE_API_SECRET=...
+BINANCE_NETWORK="spot-testnet"
+```
+
+Then you can load keys from this file:
+
+```shell
+binance-api-test-tool --config-file=.env 
+```
+
+### Test flow
 
 The usual test flow is 
 
@@ -134,16 +160,25 @@ binance-testnet-tool console
 Now you can use [client](https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client) object directly from the Python prompt.
 
 ```jupyterpython
-    # Buy 0.001 Bitcoin
-    order = client.create_order(
-        symbol="BTCUSDT",
-        side=binance_enums.SIDE_BUY,
-        type=binance_enums.ORDER_TYPE_MARKET,
-        quantity="0.0001")
-    print("New market order execution result is", order)
+>> %cpaste
+```
 
-    # Print open orders
-    print_colorful_json(client.get_open_orders())
+Then paste in simple market order execution:
+
+```python
+# Buy 0.001 Bitcoin on Binance Spot Testnet
+order = client.create_order(
+    symbol="BTCUSDT",
+    side=binance_enums.SIDE_BUY,
+    type=binance_enums.ORDER_TYPE_MARKET,
+    quantity="0.001")
+```
+Press CTRL+D for IPython to execute the pasted code.
+
+Then you can check the order results:
+
+```jupyterpython
+print_colorful_json(order)
 ```
 
 ### Available trading pairs
