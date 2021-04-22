@@ -6,6 +6,8 @@ This is a command line to test your Binance API application, orders and events f
 
 ![An example IPython session](./demo.gif)
 
+*An example session how to make 0.001 BTC market buy order on Binance Spot Testnet using Python APIs.*
+
 For more information about [Binance trade execution and bot development, contact authors at Capitalgram](https://capitalgram.com).
 
 ## About Binance Spot Testnet
