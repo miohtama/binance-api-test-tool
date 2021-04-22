@@ -69,17 +69,17 @@ export BINANCE_NETWORK="spot-testnet"
 
 The usual test flow is 
 
-#. `balances` - get your testnet balances
+1. `balances` - get your testnet balances
 
-#. `current-price` - check what is the current order book status
+1. `current-price` - check what is the current order book status
 
-#. `order-event-stream` - listen to the order change event in stream (run this in another terminal)
+1. `order-event-stream` - listen to the order change event in stream (run this in another terminal)
 
-#. `create-limit-order` - create a new limit order based on the price data
+1. `create-limit-order` - create a new limit order based on the price data
 
-#. `orders` - show your active orders (you should have one limit order now)
+1. `orders` - show your active orders (you should have one limit order now)
 
-#. `create-market-order` - fill your previously created limit order
+1. `create-market-order` - fill your previously created limit order
 
 Now you should see your limit order filled in the event stream.
 
