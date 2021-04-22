@@ -14,13 +14,15 @@ Tutorials:
 import logging
 from decimal import Decimal
 from dataclasses import dataclass
-import json
 from functools import partial
 
 import click
 from binance.client import Client
 from binance_testnet_tool.logs import setup_logging
-from pygments import highlight, lexers, formatters
+from binance_testnet_tool.console import print_colorful_json
+from binance_testnet_tool.utils import quantize_price
+from binance import enums as binance_enums
+from pycoingecko import CoinGeckoAPI
 from tabulate import tabulate
 
 
@@ -59,17 +61,19 @@ class BinanceUrlConfig:
             raise RuntimeError(f"Unknown Binance network {network}")
 
 
-
 def create_client(api_key, api_secret, network: str):
     """Create Binance client with proper testnet configuration."""
+
+    assert api_key
+    assert api_secret
 
     # Patch the client for testnet if needed
     urls = BinanceUrlConfig(network)
     Client.API_URL = urls.api_end_point
 
-    client = Client()
+    client = Client(api_key=api_key, api_secret=api_secret)
 
-    logger.info("Binance client configured for %s, using API endpoint %s", network, client.API_URL)
+    logger.info("Binance client configured for %s, using API endpoint: %s and API key: %s", network, client.API_URL, client.API_KEY)
     return client
 
 
@@ -83,25 +87,49 @@ def make_market_order(client: Client, market: str, side: str, amount: Decimal):
 @click.command()
 @click.option('--market', default="BTCUSDT", help='Market where the order is made', required=True)
 @click.option('--side', default="buy", help='Market where the order is made', required=True, type=click.Choice(['buy', 'sell']))
-@click.option('--amount', default="0.1", help='How much base pair is being traded', required=True)
-@click.option('--price', default=None, help='What is the limit order price. Leave empty to use ask or bid price.', required=False)
-def create_limit_order(market: str, side: str, amount: float, price: float):
-    """Move the market."""
+@click.option('--quantity', default="0.001", help='Amount of base pair is being traded (e.g. BTC)', required=True)
+@click.option('--price-amount', default=None, help='Set price as quote pair (e.g. in Dollar)', required=False, type=float)
+@click.option('--price-percent', default=None, help='Set price as a +/- % to reference price based on Coingecko', required=False, type=float)
+@click.option('--expiry', default=None, help='Expiry time in seconds', required=False)
+def create_limit_order(market: str, side: str, quantity: float, price_amount: float, price_percent: float, expiry: float):
+    """Add liquidity to the market.
 
-    # Let's be good citizens and use decimals everywhere
-    amount = Decimal(amount)
-    price = Decimal(price) if price else None
+    Show the Binance order execution results.
+    Limit orders can be immediately executed (reflected in the result) or left open.
+    """
 
-    if not price:
-        # Get the order book info
-        pass
+    if not any([price_amount, price_percent]):
+        raise RuntimeError("You need to give a percent price or absolute price.")
 
+    if price_amount:
+        price = Decimal(price_amount)
+    else:
+        assert market == "BTCUSDT", "No other markets supported at the yet"
+        cg = CoinGeckoAPI()
+        data = cg.get_price(ids='bitcoin', vs_currencies='usd')
+        price = Decimal(data["bitcoin"]["usd"])
 
+        assert price_percent > -100
+        assert price_percent < 100
 
-@click.command()
-def fetch_markets():
-    """List available markets in Binance"""
-    client
+        price *= Decimal(1) + Decimal(price_percent / 100.0)
+
+    # Always use decimals and present prices up a certain decimal
+    price = quantize_price(price)
+    quantity = Decimal(quantity)
+
+    logger.info("Creating a %s limit order for %s, at %f for %f crypto", side, market, price, quantity)
+
+    order = client.create_order(
+        symbol=market,
+        side=binance_enums.SIDE_BUY if side == "buy" else binance_enums.SIDE_SELL,
+        type=binance_enums.ORDER_TYPE_LIMIT,
+        timeInForce=binance_enums.TIME_IN_FORCE_GTC,
+        quantity=str(quantity),
+        price=str(price))
+
+    print("Order created")
+    print_colorful_json(order)
 
 
 @click.command()
@@ -140,17 +168,13 @@ def symbol_info(symbol: str):
     https://python-binance.readthedocs.io/en/latest/general.html
     """
     info = client.get_symbol_info(symbol)
-
-    # https://stackoverflow.com/a/32166163/315168
-    formatted_json = json.dumps(info, sort_keys=True, indent=4)
-    colorful_json = highlight(formatted_json, lexers.JsonLexer(), formatters.TerminalFormatter())
-    print(colorful_json)
+    print_colorful_json(info)
 
 
 @click.command()
 @click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
 def current_price(symbol: str):
-
+    """Current price info for a trading pair"""
     depth = client.get_order_book(symbol=symbol)
     avg = client.get_avg_price(symbol=symbol)
 
@@ -163,7 +187,7 @@ def current_price(symbol: str):
     else:
         print("No asks (nobody is selling)")
 
-    bids = sorted(depth["bids"], key=lambda x: x[0])
+    bids = sorted(depth["bids"], key=lambda x: -x[0])
     if bids:
         top_bid, top_bid_quantity = bids[0]
         print("Bid top (most money you can make by selling):", top_bid)
@@ -171,23 +195,68 @@ def current_price(symbol: str):
         print("No bids (nobody is buying)")
 
 
-@click.group("Binance Spot Testnet command line tool")
+@click.command()
+def balances():
+    """Account balances"""
+
+    tokens = client.get_account()["balances"]
+    tokens = sorted(tokens, key=lambda x: x["asset"])
+
+    def get_entries():
+        entries = []
+        for idx, token in enumerate(tokens):
+            yield idx + 1, token["asset"], token["free"], token["locked"]
+
+    headers = ["#", "Symbol", "Free balance", "Locked balance"]
+    print(tabulate(get_entries(), headers, floatfmt=".8f"))
+
+
+@click.command()
+def orders():
+    """Open orders"""
+    orders = client.get_open_orders()
+    orders = sorted(orders, key=lambda x: x["orderId"])
+    def get_entries():
+        entries = []
+        for order in orders:
+            yield order["orderId"], order["symbol"], order["type"], order["side"], order["status"], order["price"], order["origQty"], order["executedQty"]
+
+    headers = ["Order id", "Market", "Type", "Side", "Status", "Price", "Quantity quoted", "Quantity executed"]
+    print(tabulate(get_entries(), headers, floatfmt=".8f"))
+
+
+@click.command()
+def cancel_all():
+    """Cancel all open orders"""
+    orders = client.get_open_orders()
+
+    if len(orders) == 0:
+        print("No open orders to cancel")
+
+    for o in orders:
+        logger.info("Cancelling order %s", o["orderId"])
+        client.cancel_order(symbol=o["symbol"], orderId=o["orderId"])
+
+
+@click.group("Binance API Tester command line tool")
 @click.option('--api-key', default=None, help='Binance API key', required=True, envvar="BINANCE_API_KEY")
 @click.option('--api-secret', default=None, help='Binance API secret', required=True, envvar="BINANCE_API_SECRET")
 @click.option('--log-level', default="info", help='Python logging level', required=False)
-@click.option('--network',  help='Use Binance Vision Spot testnet', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
+@click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
 def main(api_key, api_secret, network, log_level):
     global client
     setup_logging(log_level)
     client = create_client(api_key, api_secret, network)
 
 
-main.add_command(fetch_markets)
 main.add_command(status)
 main.add_command(available_pairs)
 main.add_command(symbol_info)
 main.add_command(create_limit_order)
 main.add_command(current_price)
+main.add_command(balances)
+main.add_command(orders)
+main.add_command(cancel_all)
 
 
 if __name__ == "__main__":

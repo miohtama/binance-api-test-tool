@@ -8,6 +8,10 @@ The main use case is to fill your own limit orders on Binance Spot Testnet, or o
 
 Binance Spot Testnet order books contain pretty much random data. To do meaningful tests, you need to play both sides of the market yourself: creating limit orders and creating market orders. You can use the same API key to trade against yourself.
 
+- There is no frontend available for Binance Spot Testnet. All interaction must happen over the API.
+
+- Looks like all API endpoints under withdraw section do not seem to work: e.g. you cannot query your balances
+
 ## Prerequisites
 
 You need to understand Python and UNIX command line basics.
@@ -53,6 +57,19 @@ export BINANCE_NETWORK="spot-testnet"
 ## Defaults
 
 Some command requires you to specify order book. Because this is a testnet tool, unless you specify anything, we default to BTCUSDT order book, buy order and amount of 0.1 BTC. This is for the tool to be more wrist friendly.
+
+
+## Command examples
+
+### Help
+
+```shell
+python binance_testnet_tool/main.py --help
+```
+
+```
+
+```
 
 ### Available trading pairs
 
