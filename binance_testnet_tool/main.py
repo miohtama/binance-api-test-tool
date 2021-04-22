@@ -14,10 +14,13 @@ Tutorials:
 import logging
 from decimal import Decimal
 from dataclasses import dataclass
+import json
+from functools import partial
 
 import click
 from binance.client import Client
 from binance_testnet_tool.logs import setup_logging
+from pygments import highlight, lexers, formatters
 from tabulate import tabulate
 
 
@@ -25,6 +28,9 @@ logger = logging.getLogger()
 
 
 client: Client = None
+
+# https://github.com/pallets/click/issues/646#issuecomment-435317967
+click.option = partial(click.option, show_default=True)
 
 
 @dataclass
@@ -75,6 +81,24 @@ def make_market_order(client: Client, market: str, side: str, amount: Decimal):
 
 
 @click.command()
+@click.option('--market', default="BTCUSDT", help='Market where the order is made', required=True)
+@click.option('--side', default="buy", help='Market where the order is made', required=True, type=click.Choice(['buy', 'sell']))
+@click.option('--amount', default="0.1", help='How much base pair is being traded', required=True)
+@click.option('--price', default=None, help='What is the limit order price. Leave empty to use ask or bid price.', required=False)
+def create_limit_order(market: str, side: str, amount: float, price: float):
+    """Move the market."""
+
+    # Let's be good citizens and use decimals everywhere
+    amount = Decimal(amount)
+    price = Decimal(price) if price else None
+
+    if not price:
+        # Get the order book info
+        pass
+
+
+
+@click.command()
 def fetch_markets():
     """List available markets in Binance"""
     client
@@ -92,7 +116,7 @@ def status():
 
 @click.command()
 def available_pairs():
-    """Available pairs for the user to trade.
+    """Available pairs for the user to trade
 
     https://python-binance.readthedocs.io/en/latest/general.html
     """
@@ -106,6 +130,45 @@ def available_pairs():
 
     headers = ["#", "Symbol", "Midprice"]
     print(tabulate(get_entries(), headers, floatfmt=".8f"))
+
+
+@click.command()
+@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
+def symbol_info(symbol: str):
+    """Information on a single trading pair
+
+    https://python-binance.readthedocs.io/en/latest/general.html
+    """
+    info = client.get_symbol_info(symbol)
+
+    # https://stackoverflow.com/a/32166163/315168
+    formatted_json = json.dumps(info, sort_keys=True, indent=4)
+    colorful_json = highlight(formatted_json, lexers.JsonLexer(), formatters.TerminalFormatter())
+    print(colorful_json)
+
+
+@click.command()
+@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
+def current_price(symbol: str):
+
+    depth = client.get_order_book(symbol=symbol)
+    avg = client.get_avg_price(symbol=symbol)
+
+    print("Pair", symbol)
+    print("Mid price:", avg["price"], "for the period of", avg["mins"], "minutes")
+    asks = sorted(depth["asks"], key=lambda x: x[0])
+    if asks:
+        top_ask, top_ask_quantity = asks[0]
+        print("Ask top (most money you can make by buying):", top_ask)
+    else:
+        print("No asks (nobody is selling)")
+
+    bids = sorted(depth["bids"], key=lambda x: x[0])
+    if bids:
+        top_bid, top_bid_quantity = bids[0]
+        print("Bid top (most money you can make by selling):", top_bid)
+    else:
+        print("No bids (nobody is buying)")
 
 
 @click.group("Binance Spot Testnet command line tool")
@@ -122,6 +185,9 @@ def main(api_key, api_secret, network, log_level):
 main.add_command(fetch_markets)
 main.add_command(status)
 main.add_command(available_pairs)
+main.add_command(symbol_info)
+main.add_command(create_limit_order)
+main.add_command(current_price)
 
 
 if __name__ == "__main__":

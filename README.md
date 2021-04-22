@@ -2,7 +2,11 @@ This is a command line tool for Binance to test your Binance API application cod
 
 The main use case is to fill your own limit orders on Binance Spot Testnet, or otherwise trigger and simulate events you receive over Binance API.
 
-[For more information about trade execution and bot development, contact Capitalgram](https://capitalgram.com) 
+[For more information about trade execution and bot development, contact Capitalgram](https://capitalgram.com)
+
+## About Binance Spot Testnet
+
+Binance Spot Testnet order books contain pretty much random data. To do meaningful tests, you need to play both sides of the market yourself: creating limit orders and creating market orders. You can use the same API key to trade against yourself.
 
 ## Prerequisites
 
@@ -42,9 +46,13 @@ Give the given Binance API endpoint and keys as environment variales:
 
 ```shell
 export BINANCE_API_KEY=... 
-xport BINANCE_API_SECRET=...
+export BINANCE_API_SECRET=...
 export BINANCE_NETWORK="spot-testnet"
 ```
+
+## Defaults
+
+Some command requires you to specify order book. Because this is a testnet tool, unless you specify anything, we default to BTCUSDT order book, buy order and amount of 0.1 BTC. This is for the tool to be more wrist friendly.
 
 ### Available trading pairs
 
@@ -88,3 +96,7 @@ I am not reading my Github status updates due to high volume updates I am receiv
 ## License
 
 MIT
+
+The work was sponsored by [Digital Asset Management Ltd.](https://www.dam.gi/). The authors are not affiliated with Binance.
+
+
