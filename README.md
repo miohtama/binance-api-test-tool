@@ -1,3 +1,5 @@
+![badge](https://github.com/miohtama/binance-api-test-tool/workflows/CI/badge.svg)
+
 This is a command line to test your Binance API application, orders and events from command prompt and Python console. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
 
 * [Github](https://github.com/miohtama/binance-api-test-tool)
