@@ -123,6 +123,29 @@ Some command requires you to specify order book. Because this is a testnet tool,
 
 ## Command examples
 
+### Interactive console
+
+Start console with
+
+```shell
+binance-testnet-tool console
+```
+
+Now you can use [client](https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client) object directly from the Python prompt.
+
+```jupyterpython
+    # Buy 0.001 Bitcoin
+    order = client.create_order(
+        symbol="BTCUSDT",
+        side=binance_enums.SIDE_BUY,
+        type=binance_enums.ORDER_TYPE_MARKET,
+        quantity="0.0001")
+    print("New market order execution result is", order)
+
+    # Print open orders
+    print_colorful_json(client.get_open_orders())
+```
+
 ### Available trading pairs
 
 List available trading pairs. As the trading of this, Binance has 1400 trading pairs, whileas Spot Testnet has only 20 pairs.
