@@ -128,7 +128,7 @@ Some command requires you to specify order book. Because this is a testnet tool,
 List available trading pairs. As the trading of this, Binance has 1400 trading pairs, whileas Spot Testnet has only 20 pairs.
 
 ```shell
-python binance_testnet_tool/main.py available-pairs
+binance-testnet-tool available-pairs
 ```
 
 ```
@@ -155,7 +155,7 @@ Use `--log-level` flag.
 Example:
 
 ```shell
-python binance_testnet_tool/main.py --log-level=debug create-limit-order --side=buy --price-amount=8000
+binance-testnet-tool --log-level=debug create-limit-order --side=buy --price-amount=8000
 ```
 
 ### Further usage help
@@ -178,10 +178,10 @@ poetry shell
 poetry install
 ```
 
-Run as 
+You can run the application locally:
 
 ```shell
-python binance_testnet_tool/main.py
+poetry run binance-testnet-tool
 ```
 
 ### Building and releasing Docker image

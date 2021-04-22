@@ -284,24 +284,40 @@ def version():
 @click.command()
 def console():
     """Interactive IPython console session"""
+
+    # https://ipython.readthedocs.io/en/stable/interactive/reference.html#embedding
     imported_objects = {}
     import datetime
     from IPython import embed
 
+    # Import some generic commands
     imported_objects["client"] = client
     imported_objects["bm"] = bm
+    imported_objects["binance_enums"] = binance_enums
     imported_objects["datetime"] = datetime
     imported_objects["tabulate"] = tabulate
     imported_objects["print_colorful_json"] = print_colorful_json
 
+    # Patch some missing help texts
+    client.__doc__ = "Binance client"
+    bm.__doc__ = "Binance WebSockets manager"
+    binance_enums.__doc__ = "Binance API enums"
+
     print('')
-    print('Following classes and objects are available:')
-    for var, val in imported_objects.items():
-        line = "{key:30}: {value}".format(
-            key=var,
-            value=str(val).replace('\n', ' ').replace('\r', ' ')
-        )
-        print(line)
+    print('Following objects and functions are available in Python session:')
+
+    def get_entries():
+        entries = []
+        for key, obj in imported_objects.items():
+            key = key.replace("-", "_")
+            help = ""
+            doc = getattr(obj, "__doc__", None)
+            if doc:
+                help = doc.split("\n")[0]
+            yield key, str(obj)[0:40], help
+
+    headers = ["Name", "Object", "Help"]
+    print(tabulate(get_entries(), headers))
     print('')
 
     embed(user_ns=imported_objects, colors="Linux")
