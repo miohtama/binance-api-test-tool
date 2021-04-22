@@ -86,7 +86,10 @@ def create_client(api_key, api_secret, network: str):
     bm = BinanceSocketManager(client)
     bm.STREAM_URL = urls.stream_url
 
-    logger.info("Binance client configured for %s, using API endpoint: %s, stream endpoint: %s, and API key: %s", network, client.API_URL, bm.STREAM_URL, client.API_KEY)
+    logger.info("Binance client configured for %s", network)
+    logger.info("API key: %s", client.API_KEY)
+    logger.info("Using HTTP API endpoint: %s", client.API_URL)
+    logger.info("Using WebSocket API endpoint: %s", bm.STREAM_URL)
     return client, bm
 
 

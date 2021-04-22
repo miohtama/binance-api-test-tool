@@ -1,6 +1,6 @@
 ![badge](https://github.com/miohtama/binance-api-test-tool/workflows/CI/badge.svg)
 
-This is a command line to test your Binance API application, orders and events from command prompt and Python console. It works with Binance main API as well as [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
+`binance-api-test-tool` is a tool to test your Binance API application, orders and events from command line and Python console. It works with [Binance Spot Testnet](https://testnet.binance.vision/). The main use case is to make and fill your own orders, or otherwise trigger and simulate events you receive over Binance API.
 
 * [Github](https://github.com/miohtama/binance-api-test-tool)
 
@@ -182,7 +182,7 @@ Press CTRL+D for IPython to execute the pasted code.
 Then you can check the order results:
 
 ```jupyterpython
-print_colorful_json(order)
+>> print_colorful_json(order)
 ```
 
 ### Available trading pairs
@@ -286,6 +286,8 @@ I am not reading my Github status updates due to high volume updates I am receiv
 ## License
 
 MIT
+
+## Sponsors
 
 The work was sponsored by [Digital Asset Management Ltd.](https://www.dam.gi/). The authors are not affiliated with Binance.
 
