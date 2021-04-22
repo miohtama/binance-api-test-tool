@@ -16,7 +16,28 @@ Binance Spot Testnet order books contain pretty much random data. To do meaningf
 
 ## Prerequisites
 
-You need to understand Python and UNIX command line basics.
+This software works on Windows, macOS and Linux.
+
+You need to understand command line basics.
+
+You need to be able to use [Docker](https://www.docker.com/).
+
+## Installation
+
+The application is distributed as Docker image and automatically downloaded when you run it for the first time.
+You need to have Docker properly configured on your computer.
+
+First create an alias to run the application:
+
+```shell
+alias binance-api-test-tool='docker run miohtama/binance-api-test-tool:latest'
+```
+
+Then you can run the tool:
+
+```shell
+binance-ai-test-tool --help
+```
 
 ## Features
 
@@ -48,17 +69,17 @@ export BINANCE_NETWORK="spot-testnet"
 
 The usual test flow is 
 
-# `balances` - get your testnet balances
+#. `balances` - get your testnet balances
 
-# `current-price` - check what is the current order book status
+#. `current-price` - check what is the current order book status
 
-# `order-event-stream` - listen to the order change event in stream (run this in another terminal)
+#. `order-event-stream` - listen to the order change event in stream (run this in another terminal)
 
-# `create-limit-order` - create a new limit order based on the price data
+#. `create-limit-order` - create a new limit order based on the price data
 
-# `orders` - show your active orders (you should have one limit order now)
+#. `orders` - show your active orders (you should have one limit order now)
 
-# `create-market-order` - fill your previously created limit order
+#. `create-market-order` - fill your previously created limit order
 
 Now you should see your limit order filled in the event stream.
 
