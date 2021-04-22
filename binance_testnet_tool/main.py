@@ -68,8 +68,11 @@ class BinanceUrlConfig:
 def create_client(api_key, api_secret, network: str):
     """Create Binance client with proper testnet configuration."""
 
-    assert api_key
-    assert api_secret
+    # Some APIs are not public and API keys are needed
+    # assert api_key
+    # assert api_secret
+
+    assert network, "You need to choose Binance API network"
 
     # Patch the client for testnet if needed
     urls = BinanceUrlConfig(network)
