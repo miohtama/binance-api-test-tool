@@ -254,10 +254,7 @@ def current_price(symbol: str):
 @click.option('--step', default=2, help='How many percent each step is', required=False, type=float)
 @click.option('--max-steps', default=6, help='How many stairs we do per side', required=False, type=int)
 def depth(symbol: str, step: float=2, max_steps: int=6):
-    """Show orderbook depth chart
-
-    Only useful for test orderbooks - very inefficient implementation.
-    """
+    """Show orderbook depth"""
 
     depth = client.get_order_book(symbol=symbol)
 
@@ -266,7 +263,7 @@ def depth(symbol: str, step: float=2, max_steps: int=6):
     bids = sorted(depth["bids"], key=lambda x: -float(x[0]))
 
     if not asks:
-        print("Order book has no asks - cannot market sell")
+        print("Order book has no asks - cannot market buy")
     else:
         top_ask, top_ask_quantity = asks[0]
         top_ask = float(top_ask)
@@ -278,10 +275,10 @@ def depth(symbol: str, step: float=2, max_steps: int=6):
             total_liquidity += price * quantity
             cumulative_depth += quantity
         avg_price = total_liquidity / cumulative_depth
-        print(f"Total {cumulative_depth} asks at the liquidity of {total_liquidity}, average price is {avg_price}")
+        print(f"Total {cumulative_depth} asks at the liquidity of {total_liquidity:,}, average price is {avg_price}")
 
-    if not asks:
-        print("Order book has no bids - cannot markey buy")
+    if not bids:
+        print("Order book has no bids - cannot market sell")
     else:
         top_bid, _ = bids[0]
         top_bid = float(top_bid)
@@ -293,7 +290,7 @@ def depth(symbol: str, step: float=2, max_steps: int=6):
             total_liquidity += price * quantity
             cumulative_depth += quantity
         avg_price = total_liquidity / cumulative_depth
-        print(f"Total {cumulative_depth} bids at the liquidity of {total_liquidity}, average price is {avg_price}")
+        print(f"Total {cumulative_depth} bids at the liquidity of {total_liquidity:,}, average price is {avg_price}")
 
 
 @click.command()
@@ -329,6 +326,17 @@ def orders():
 
     headers = ["Order id", "Market", "Type", "Side", "Status", "Price", "Quantity quoted", "Quantity executed"]
     print(tabulate(get_entries(), headers, floatfmt=".8f"))
+
+
+@click.command()
+@click.option('--market', default="BTCUSDT", help='Which market', required=True)
+@click.option('--order-id', help='Binance order id', required=True)
+def check_order(market: str, order_id: str):
+    """Status of a single order"""
+
+    check_accounted_api_client()
+    order_data = client.get_order(symbol=market, orderId=order_id)
+    print_colorful_json(order_data)
 
 
 @click.command()
@@ -460,6 +468,7 @@ main.add_command(current_price)
 main.add_command(depth)
 main.add_command(balances)
 main.add_command(orders)
+main.add_command(check_order)
 main.add_command(cancel_all)
 main.add_command(order_event_stream)
 main.add_command(version)
