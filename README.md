@@ -4,7 +4,7 @@
 
 * [Github](https://github.com/miohtama/binance-api-test-tool)
 
-* [Docker GHub](https://hub.docker.com/repository/docker/miohtama/binance-api-test-tool)
+* [DockerHub](https://hub.docker.com/repository/docker/miohtama/binance-api-test-tool)
 
 ![An example IPython session](./demo.gif)
 
