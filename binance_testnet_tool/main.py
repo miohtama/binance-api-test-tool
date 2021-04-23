@@ -182,6 +182,11 @@ def create_market_order(market: str, side: str, quantity: float):
     logger.info("Order created")
     print_colorful_json(order)
 
+    if order["executedQty"] != order["origQty"]:
+        logger.warning("Could not fill the order, executed only %s", order["executedQty"])
+
+
+
 
 @click.command()
 def status():
@@ -245,6 +250,56 @@ def current_price(symbol: str):
 
 
 @click.command()
+@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
+@click.option('--step', default=2, help='How many percent each step is', required=False, type=float)
+@click.option('--max-steps', default=6, help='How many stairs we do per side', required=False, type=int)
+def depth(symbol: str, step: float=2, max_steps: int=6):
+    """Show orderbook depth chart"""
+
+    print("The depth mapper needs some specialed output format, because Spot Testnet orderbooks are very unbalanced")
+    print("Do not use this code")
+
+    depth = client.get_order_book(symbol=symbol)
+    mid_price = float(client.get_avg_price(symbol=symbol)["price"])
+
+    print("Pair", symbol)
+    asks = sorted(depth["asks"], key=lambda x: float(x[0]))
+    bids = sorted(depth["bids"], key=lambda x: -float(x[0]))
+
+    if not asks:
+        print("Order book has no asks")
+    else:
+
+        top_ask, top_ask_quantity = asks[0]
+        top_ask = float(top_ask)
+        print("Top ask is", top_ask)
+
+        for step_idx in range(1, max_steps + 1):
+            depth = step_idx * step
+            percent_change = (100 + depth) / 100
+            target_price = top_ask * percent_change
+            cumulative_depth = total_liquidity = 0
+            for price, quantity in asks:
+                price = float(price)
+                quantity = float(quantity)
+                total_liquidity += price * quantity
+                cumulative_depth += quantity
+                avg_price = total_liquidity / cumulative_depth
+                # print(cumulative_depth, price,avg_price)
+                if avg_price >= target_price:
+                    actual_depth = (price - top_ask) / top_ask * 100
+                    print(f"Moving price to {price} ({actual_depth} %) would require buying {cumulative_depth} BTC from {cumulative_depth} BTC with {total_liquidity} USD")
+                    break
+            else:
+                print(f"Price cannot be reached {target_price}")
+
+    if not bids:
+        print("Order book has no bids")
+    else:
+        print("Unfinished")
+
+
+@click.command()
 def balances():
     """Account balances"""
 
@@ -305,7 +360,7 @@ def order_event_stream():
         logger.info("Received event %s", msg["e"])
         print_colorful_json(msg)
 
-    logger.info("Connecting to the websockect")
+    logger.info("Connecting to the websocket")
 
     # start any sockets here, i.e a trade socket
     conn_key = bm.start_user_socket(process_message)
@@ -313,6 +368,7 @@ def order_event_stream():
 
     logger.info("Connected - stream running - do some orders in another terminal")
     bm.start()
+
 
 @click.command()
 def version():
@@ -404,6 +460,7 @@ main.add_command(symbol_info)
 main.add_command(create_limit_order)
 main.add_command(create_market_order)
 main.add_command(current_price)
+main.add_command(depth)
 main.add_command(balances)
 main.add_command(orders)
 main.add_command(cancel_all)
