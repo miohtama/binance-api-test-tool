@@ -15,14 +15,16 @@ import logging
 from decimal import Decimal
 from dataclasses import dataclass
 from functools import partial
+from inspect import getmembers, isfunction
+import sys
 
-import click
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
 from binance_testnet_tool.logs import setup_logging
 from binance_testnet_tool.console import print_colorful_json
 from binance_testnet_tool.utils import quantize_price
 from binance_testnet_tool.utils import quantize_quantity
+from binance_testnet_tool.utils import call_click_command
 from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance import enums as binance_enums
 from pycoingecko import CoinGeckoAPI
@@ -289,7 +291,7 @@ def version():
 
 
 @click.command()
-def console():
+def console(ctx):
     """Interactive IPython console session"""
 
     # https://ipython.readthedocs.io/en/stable/interactive/reference.html#embedding
@@ -310,6 +312,21 @@ def console():
     bm.__doc__ = "Binance WebSockets manager"
     binance_enums.__doc__ = "Binance API enums"
 
+    def _call_click_command(cmd: click.Command, *args, **kwargs):
+        result = cmd.callback(*args, **kwargs)
+        return result
+
+    # Pull out all Click commands from the current module
+    module = sys.modules[__name__]
+    for name, obj in getmembers(module):
+        if isinstance(obj, click.Command) and not isinstance(obj, click.Group):
+            # Create a wrapper Python function that calls click Command.
+            # We also set docstring of this function correctly.
+            name = name.replace("-", "_")
+            func = partial(_call_click_command, obj)
+            func.__doc__ = obj.__doc__
+            imported_objects[name] = func
+
     print('')
     print('Following objects and functions are available in Python session:')
 
@@ -321,9 +338,9 @@ def console():
             doc = getattr(obj, "__doc__", None)
             if doc:
                 help = doc.split("\n")[0]
-            yield key, str(obj)[0:40], help
+            yield key, help, str(obj)[0:40],
 
-    headers = ["Name", "Object", "Help"]
+    headers = ["Name", "Help", "Object"]
     print(tabulate(get_entries(), headers))
     print('')
 

@@ -14,3 +14,4 @@ def quantize_quantity(quantity, decimals=8) -> Decimal:
     quantity=0.00200000000000000004163336342344337026588618755340576171875
     """
     return Decimal(quantity).quantize((Decimal(10) ** Decimal(-decimals)))
+
