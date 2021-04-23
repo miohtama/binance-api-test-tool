@@ -16,15 +16,16 @@ from decimal import Decimal
 from dataclasses import dataclass
 from functools import partial
 from inspect import getmembers, isfunction
+import os
 import sys
 
+import click
 from binance.client import Client
 from binance.websockets import BinanceSocketManager
 from binance_testnet_tool.logs import setup_logging
 from binance_testnet_tool.console import print_colorful_json
 from binance_testnet_tool.utils import quantize_price
 from binance_testnet_tool.utils import quantize_quantity
-from binance_testnet_tool.utils import call_click_command
 from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance import enums as binance_enums
 from pycoingecko import CoinGeckoAPI
@@ -70,15 +71,20 @@ class BinanceUrlConfig:
 def create_client(api_key, api_secret, network: str):
     """Create Binance client with proper testnet configuration."""
 
-    # Some APIs are not public and API keys are needed
-    # assert api_key
-    # assert api_secret
+    if not network:
+        network = os.environ.get("BINANCE_NETWORK")
 
     assert network, "You need to choose Binance API network"
 
     # Patch the client for testnet if needed
     urls = BinanceUrlConfig(network)
     Client.API_URL = urls.api_end_point
+
+    if not api_key:
+        api_key = os.environ.get("BINANCE_API_KEY")
+
+    if not api_secret:
+        api_secret = os.environ.get("BINANCE_API_SECRET")
 
     client = Client(api_key=api_key, api_secret=api_secret)
 
@@ -92,7 +98,17 @@ def create_client(api_key, api_secret, network: str):
     logger.info("API key: %s", client.API_KEY)
     logger.info("Using HTTP API endpoint: %s", client.API_URL)
     logger.info("Using WebSocket API endpoint: %s", bm.STREAM_URL)
+
+    if not client.API_KEY:
+        logger.warning("Binance API key not configured, only public API functions available")
+
     return client, bm
+
+
+def check_accounted_api_client():
+    """Raises an error if we do not have an API key configured."""
+    if not client.API_KEY:
+        raise RuntimeError("To call this command you need to have your Binance API key configured")
 
 
 @click.command()
@@ -107,6 +123,8 @@ def create_limit_order(market: str, side: str, quantity: float, price_amount: fl
     Show the Binance order execution results.
     Limit orders can be immediately executed (reflected in the result) or left open.
     """
+
+    check_accounted_api_client()
 
     if not any([price_amount, price_percent]):
         raise RuntimeError("You need to give a percent price or absolute price.")
@@ -151,6 +169,9 @@ def create_market_order(market: str, side: str, quantity: float):
 
     Binance markets orders do not have price.
     """
+
+    check_accounted_api_client()
+
     quantity = quantize_quantity(quantity)
     logger.info("Creating a %s market order for %s, for %f crypto", side, market, quantity)
     order = client.create_order(
@@ -227,6 +248,8 @@ def current_price(symbol: str):
 def balances():
     """Account balances"""
 
+    check_accounted_api_client()
+
     tokens = client.get_account()["balances"]
     tokens = sorted(tokens, key=lambda x: x["asset"])
 
@@ -242,6 +265,9 @@ def balances():
 @click.command()
 def orders():
     """Open orders"""
+
+    check_accounted_api_client()
+
     orders = client.get_open_orders()
     orders = sorted(orders, key=lambda x: x["orderId"])
     def get_entries():
@@ -256,6 +282,9 @@ def orders():
 @click.command()
 def cancel_all():
     """Cancel all open orders"""
+
+    check_accounted_api_client()
+
     orders = client.get_open_orders()
 
     if len(orders) == 0:
@@ -269,6 +298,8 @@ def cancel_all():
 @click.command()
 def order_event_stream():
     """Open order event stream"""
+
+    check_accounted_api_client()
 
     def process_message(msg: dict):
         logger.info("Received event %s", msg["e"])
@@ -291,7 +322,7 @@ def version():
 
 
 @click.command()
-def console(ctx):
+def console():
     """Interactive IPython console session"""
 
     # https://ipython.readthedocs.io/en/stable/interactive/reference.html#embedding
@@ -348,11 +379,11 @@ def console(ctx):
 
 
 @click.group("Binance API Tester command line tool")
-@click.option('--api-key', default=None, help='Binance API key', required=False, envvar="BINANCE_API_KEY")
-@click.option('--api-secret', default=None, help='Binance API secret', required=False, envvar="BINANCE_API_SECRET")
+@click.option('--api-key', default=None, help='Binance API key', required=False)
+@click.option('--api-secret', default=None, help='Binance API secret', required=False)
 @click.option('--log-level', default="info", help='Python logging level', required=False)
 @click.option('--config-file', default=None, help='Read environment variables from this INI config file', required=False, type=click.Path(exists=True))
-@click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=True, envvar="BINANCE_NETWORK")
+@click.option('--network',  help='Binance API endpoint to use', type=click.Choice(['production', 'spot-testnet']), required=False)
 def main(api_key, api_secret, network, log_level, config_file):
     global client
     global bm
