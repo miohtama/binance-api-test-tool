@@ -267,7 +267,7 @@ def depth(symbol: str, step: float=2, max_steps: int=6):
     else:
         top_ask, top_ask_quantity = asks[0]
         top_ask = float(top_ask)
-        print("Top ask is", top_ask)
+        print("Top ask is", top_ask, "with the quantity of", top_ask_quantity)
         cumulative_depth = total_liquidity = 0
         for price, quantity in asks:
             price = float(price)
@@ -280,9 +280,9 @@ def depth(symbol: str, step: float=2, max_steps: int=6):
     if not bids:
         print("Order book has no bids - cannot market sell")
     else:
-        top_bid, _ = bids[0]
+        top_bid, top_bid_quantity = bids[0]
         top_bid = float(top_bid)
-        print("Top bid is", top_bid)
+        print("Top bid is", top_bid, "with the quantity of", top_bid_quantity)
         cumulative_depth = total_liquidity = 0
         for price, quantity in bids:
             price = float(price)

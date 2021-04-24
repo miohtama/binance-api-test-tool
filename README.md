@@ -283,6 +283,8 @@ I am not reading my Github status updates due to high volume updates I am receiv
 
 * [python-binance documentation](https://python-binance.readthedocs.io/)
 
+* [Binance Developer Community](https://dev.binance.vision/)
+
 ## License
 
 MIT
