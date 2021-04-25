@@ -173,6 +173,7 @@ def create_market_order(market: str, side: str, quantity: float):
     check_accounted_api_client()
 
     quantity = quantize_quantity(quantity)
+
     logger.info("Creating a %s market order for %s, for %f crypto", side, market, quantity)
     order = client.create_order(
         symbol=market,
@@ -186,8 +187,6 @@ def create_market_order(market: str, side: str, quantity: float):
         logger.warning("Could not fill the order, executed only %s", order["executedQty"])
 
 
-
-
 @click.command()
 def status():
     """Print exchange status"""
@@ -196,7 +195,7 @@ def status():
 
 
 @click.command()
-def available_pairs():
+def available_markets():
     """Available pairs for the user to trade"""
     tokens = client.get_all_tickers()
     tokens = sorted(tokens, key=lambda x: x["symbol"])
@@ -211,21 +210,21 @@ def available_pairs():
 
 
 @click.command()
-@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
-def symbol_info(symbol: str):
+@click.option('--market', default="BTCUSDT", help='Which market', required=True)
+def market_info(market: str):
     """Information on a single trading pair"""
-    info = client.get_symbol_info(symbol)
+    info = client.get_symbol_info(market)
     print_colorful_json(info)
 
 
 @click.command()
-@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
-def current_price(symbol: str):
+@click.option('--market', default="BTCUSDT", help='Which market', required=True)
+def current_price(market: str):
     """Current price info for a trading pair"""
-    depth = client.get_order_book(symbol=symbol)
-    avg = client.get_avg_price(symbol=symbol)
+    depth = client.get_order_book(symbol=market)
+    avg = client.get_avg_price(symbol=market)
 
-    print("Pair", symbol)
+    print("Pair", market)
     print("Mid price:", avg["price"], "for the period of", avg["mins"], "minutes")
     asks = sorted(depth["asks"], key=lambda x: float(x[0]))
     if asks:
@@ -250,15 +249,13 @@ def current_price(symbol: str):
 
 
 @click.command()
-@click.option('--symbol', default="BTCUSDT", help='Which market', required=True)
-@click.option('--step', default=2, help='How many percent each step is', required=False, type=float)
-@click.option('--max-steps', default=6, help='How many stairs we do per side', required=False, type=int)
-def depth(symbol: str, step: float=2, max_steps: int=6):
+@click.option('--market', default="BTCUSDT", help='Which market', required=True)
+def depth(market: str):
     """Show orderbook depth"""
 
-    depth = client.get_order_book(symbol=symbol)
+    depth = client.get_order_book(symbol=market)
 
-    print("Pair", symbol)
+    print("Pair", market)
     asks = sorted(depth["asks"], key=lambda x: float(x[0]))
     bids = sorted(depth["bids"], key=lambda x: -float(x[0]))
 
@@ -460,8 +457,8 @@ def main(api_key, api_secret, network, log_level, config_file):
 
 
 main.add_command(status)
-main.add_command(available_pairs)
-main.add_command(symbol_info)
+main.add_command(available_markets)
+main.add_command(market_info)
 main.add_command(create_limit_order)
 main.add_command(create_market_order)
 main.add_command(current_price)
