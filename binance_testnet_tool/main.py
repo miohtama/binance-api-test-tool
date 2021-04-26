@@ -88,6 +88,8 @@ def create_client(api_key, api_secret, network: str):
 
     client = Client(api_key=api_key, api_secret=api_secret)
 
+    client.network = network
+
     # Add our HTTP POST debug dumper
     client.session.hooks["response"].append(hook_request_dump)
 
@@ -105,10 +107,13 @@ def create_client(api_key, api_secret, network: str):
     return client, bm
 
 
-def check_accounted_api_client():
+def check_accounted_api_client(must_be_production=False, permission_needed="USER_DATA"):
     """Raises an error if we do not have an API key configured."""
     if not client.API_KEY:
         raise RuntimeError("To call this command you need to have your Binance API key configured")
+    if must_be_production:
+        if client.network != "production":
+            raise RuntimeError(f"This API call is only available for production API keys, needs permission {permission_needed}")
 
 
 @click.command()
@@ -337,6 +342,15 @@ def check_order(market: str, order_id: str):
 
 
 @click.command()
+@click.option('--market', default="BTCUSDT", help='Which market', required=True)
+def fees(market: str):
+    """Fetch maker/taker fee."""
+    check_accounted_api_client(must_be_production=True)
+    order_data = client.get_trade_fee(symbol=market)
+    print_colorful_json(order_data)
+
+
+@click.command()
 def cancel_all():
     """Cancel all open orders"""
 
@@ -464,6 +478,7 @@ main.add_command(create_market_order)
 main.add_command(current_price)
 main.add_command(depth)
 main.add_command(balances)
+main.add_command(fees)
 main.add_command(orders)
 main.add_command(check_order)
 main.add_command(cancel_all)
