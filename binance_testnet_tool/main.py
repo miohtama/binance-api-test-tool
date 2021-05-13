@@ -18,10 +18,10 @@ from functools import partial
 from inspect import getmembers, isfunction
 import os
 import sys
+from typing import Tuple
 
 import click
 from binance.client import Client
-from binance.websockets import BinanceSocketManager
 from binance_testnet_tool.logs import setup_logging
 from binance_testnet_tool.console import print_colorful_json
 from binance_testnet_tool.utils import quantize_price, check_accounted_api_client
@@ -29,6 +29,7 @@ from binance_testnet_tool.utils import quantize_quantity
 from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance_testnet_tool.depth import get_depth_info, Side
 from binance import enums as binance_enums
+from binance import ThreadedWebsocketManager
 from pycoingecko import CoinGeckoAPI
 from dotenv import load_dotenv
 from tabulate import tabulate
@@ -38,7 +39,7 @@ logger = logging.getLogger()
 
 client: Client = None
 
-bm: BinanceSocketManager = None
+bm: ThreadedWebsocketManager = None
 
 # https://github.com/pallets/click/issues/646#issuecomment-435317967
 click.option = partial(click.option, show_default=True)
@@ -55,8 +56,10 @@ class BinanceUrlConfig:
 
     api_end_point: str
     stream_url: str
+    network: str
 
     def __init__(self, network: str):
+        self.network = network
         if network == "spot-testnet":
             self.api_end_point = "https://testnet.binance.vision/api"
             # self.user_stream_endpoint = "userDataStream"
@@ -68,8 +71,11 @@ class BinanceUrlConfig:
         else:
             raise RuntimeError(f"Unknown Binance network {network}")
 
+    def is_testnet(self):
+        return self.network == "spot-testnet"
 
-def create_client(api_key, api_secret, network: str):
+
+def create_client(api_key, api_secret, network: str) -> Tuple[Client, ThreadedWebsocketManager]:
     """Create Binance client with proper testnet configuration."""
 
     if not network:
@@ -94,13 +100,12 @@ def create_client(api_key, api_secret, network: str):
     # Add our HTTP POST debug dumper
     client.session.hooks["response"].append(hook_request_dump)
 
-    bm = BinanceSocketManager(client)
-    bm.STREAM_URL = urls.stream_url
+    bm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret, testnet=urls.is_testnet())
 
     logger.info("Binance client configured for %s", network)
     logger.info("API key: %s", client.API_KEY)
     logger.info("Using HTTP API endpoint: %s", client.API_URL)
-    logger.info("Using WebSocket API endpoint: %s", bm.STREAM_URL)
+    logger.info("Using testnet: %s", bm._client_params["testnet"])
 
     if not client.API_KEY:
         logger.warning("Binance API key not configured, only public API functions available")

@@ -7,7 +7,8 @@ authors = ["Mikko Ohtamaa <mikko@capitalgram.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 click = "^7.1.2"
-python-binance = "^0.7.11"
+#python-binance = "^0.7.11"
+python-binance = "1.0.10"
 coloredlogs = "^15.0"
 tabulate = "^0.8.9"
 Pygments = "^2.8.1"

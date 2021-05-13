@@ -53,7 +53,7 @@ def get_depth_info(client: Client, market: str, side: Side) -> SideDepthInfo:
     else:
         top, top_quantity = side_data[0]
         info.top_order_price = float(top)
-        info.top_order_quantity = top_quantity
+        info.top_order_quantity = float(top_quantity)
         cumulative_depth = total_liquidity = 0
         for price, quantity in side_data:
             price = float(price)
