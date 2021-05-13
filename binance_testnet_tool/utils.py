@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from binance.client import Client
+
 
 def quantize_price(price, decimals=8) -> Decimal:
     """Always present prices up to certain amount of decimals"""
@@ -31,3 +33,12 @@ def get_tick_size(client, market: str) -> Decimal:
     # This is like "0.00001000"
     tick_size = filters["PRICE_FILTER"]["tickSize"]
     return Decimal(tick_size)
+
+
+def check_accounted_api_client(client: Client, must_be_production=False, permission_needed="USER_DATA"):
+    """Raises an error if we do not have an API key configured."""
+    if not client.API_KEY:
+        raise RuntimeError("To call this command you need to have your Binance API key configured")
+    if must_be_production:
+        if client.network != "production":
+            raise RuntimeError(f"This API call is only available for production API keys, needs permission {permission_needed}")

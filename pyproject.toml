@@ -25,3 +25,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 binance-testnet-tool = "binance_testnet_tool.main:main"
+test-limit-expiry-order = "binance_testnet_tool.manual_test_expiry:main"

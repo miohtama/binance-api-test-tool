@@ -24,7 +24,7 @@ from binance.client import Client
 from binance.websockets import BinanceSocketManager
 from binance_testnet_tool.logs import setup_logging
 from binance_testnet_tool.console import print_colorful_json
-from binance_testnet_tool.utils import quantize_price
+from binance_testnet_tool.utils import quantize_price, check_accounted_api_client
 from binance_testnet_tool.utils import quantize_quantity
 from binance_testnet_tool.requesthelpers import hook_request_dump
 from binance_testnet_tool.depth import get_depth_info, Side
@@ -108,15 +108,6 @@ def create_client(api_key, api_secret, network: str):
     return client, bm
 
 
-def check_accounted_api_client(must_be_production=False, permission_needed="USER_DATA"):
-    """Raises an error if we do not have an API key configured."""
-    if not client.API_KEY:
-        raise RuntimeError("To call this command you need to have your Binance API key configured")
-    if must_be_production:
-        if client.network != "production":
-            raise RuntimeError(f"This API call is only available for production API keys, needs permission {permission_needed}")
-
-
 @click.command()
 @click.option('--market', default="BTCUSDT", help='Market where the order is made', required=True)
 @click.option('--side', help='Are you buying or selling', type=click.Choice(['buy', 'sell']), required=True)
@@ -130,7 +121,7 @@ def create_limit_order(market: str, side: str, quantity: float, price_amount: fl
     Limit orders can be immediately executed (reflected in the result) or left open.
     """
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     if not any([price_amount, price_percent]):
         raise RuntimeError("You need to give a percent price or absolute price.")
@@ -176,7 +167,7 @@ def create_market_order(market: str, side: str, quantity: float):
     Binance markets orders do not have price.
     """
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     quantity = quantize_quantity(quantity)
 
@@ -273,7 +264,7 @@ def depth(market: str):
 def balances():
     """Account balances"""
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     tokens = client.get_account()["balances"]
     tokens = sorted(tokens, key=lambda x: x["asset"])
@@ -291,7 +282,7 @@ def balances():
 def orders():
     """Open orders"""
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     orders = client.get_open_orders()
     orders = sorted(orders, key=lambda x: x["orderId"])
@@ -310,7 +301,7 @@ def orders():
 def check_order(market: str, order_id: str):
     """Status of a single order"""
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
     order_data = client.get_order(symbol=market, orderId=order_id)
     print_colorful_json(order_data)
 
@@ -328,7 +319,7 @@ def fees(market: str):
 def cancel_all():
     """Cancel all open orders"""
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     orders = client.get_open_orders()
 
@@ -344,7 +335,7 @@ def cancel_all():
 def order_event_stream():
     """Open order event stream"""
 
-    check_accounted_api_client()
+    check_accounted_api_client(client)
 
     def process_message(msg: dict):
         logger.info("Received event %s", msg["e"])
