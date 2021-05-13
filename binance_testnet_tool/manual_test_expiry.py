@@ -43,10 +43,12 @@ async def _main(api_key, api_secret, log_level, config_file):
 
     # Subscribe to the events
     check_accounted_api_client(client)
+    done_event = asyncio.Event()
 
     def process_message(msg: dict):
         logger.info("Received event %s", msg["e"])
         print_colorful_json(msg)
+        done_event.set()
 
     logger.info("Connecting to the websocket")
 
@@ -90,6 +92,12 @@ async def _main(api_key, api_secret, log_level, config_file):
         recvWindow=int(order_duration_seconds * 1000.0))
 
     print(f"Created order {order}")
+
+    # Wait until we get expiry event
+    await done_event.wait()
+
+    # Close websocket listener
+    bm.close()
 
 
 
