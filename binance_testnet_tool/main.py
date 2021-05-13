@@ -27,6 +27,7 @@ from binance_testnet_tool.console import print_colorful_json
 from binance_testnet_tool.utils import quantize_price
 from binance_testnet_tool.utils import quantize_quantity
 from binance_testnet_tool.requesthelpers import hook_request_dump
+from binance_testnet_tool.depth import get_depth_info, Side
 from binance import enums as binance_enums
 from pycoingecko import CoinGeckoAPI
 from dotenv import load_dotenv
@@ -258,41 +259,14 @@ def current_price(market: str):
 def depth(market: str):
     """Show orderbook depth"""
 
-    depth = client.get_order_book(symbol=market)
+    for side in (Side.ask, Side.bid):
+        info = get_depth_info(client, market, side)
+        if info.empty:
+            print(f"Order book has no {info.side.value}s - cannot {info.market_order_name}")
+            continue
 
-    print("Pair", market)
-    asks = sorted(depth["asks"], key=lambda x: float(x[0]))
-    bids = sorted(depth["bids"], key=lambda x: -float(x[0]))
-
-    if not asks:
-        print("Order book has no asks - cannot market buy")
-    else:
-        top_ask, top_ask_quantity = asks[0]
-        top_ask = float(top_ask)
-        print("Top ask is", top_ask, "with the quantity of", top_ask_quantity)
-        cumulative_depth = total_liquidity = 0
-        for price, quantity in asks:
-            price = float(price)
-            quantity = float(quantity)
-            total_liquidity += price * quantity
-            cumulative_depth += quantity
-        avg_price = total_liquidity / cumulative_depth
-        print(f"Total {cumulative_depth} asks at the liquidity of {total_liquidity:,}, average price is {avg_price}")
-
-    if not bids:
-        print("Order book has no bids - cannot market sell")
-    else:
-        top_bid, top_bid_quantity = bids[0]
-        top_bid = float(top_bid)
-        print("Top bid is", top_bid, "with the quantity of", top_bid_quantity)
-        cumulative_depth = total_liquidity = 0
-        for price, quantity in bids:
-            price = float(price)
-            quantity = float(quantity)
-            total_liquidity += price * quantity
-            cumulative_depth += quantity
-        avg_price = total_liquidity / cumulative_depth
-        print(f"Total {cumulative_depth} bids at the liquidity of {total_liquidity:,}, average price is {avg_price}")
+        print(f"Top {info.side.value} is {info.top_order_price} {info.quote_asset} with the quantity of {info.top_order_quantity} {info.base_asset}")
+        print(f"Total {info.cumulative_depth} {info.base_asset} {info.side.value}s at the liquidity of {info.total_liquidity:,} {info.quote_asset}, average price is {info.avg_price} {info.quote_asset}")
 
 
 @click.command()
