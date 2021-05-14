@@ -108,7 +108,7 @@ def _main(api_key, api_secret, log_level, config_file):
         # in this case we should get under 100% filled.
         # Also I can see that user socket receives no events about this order, only POST response
         # is given to the client - maybe I am doing it wrong.
-        print(f"Creating buy limit order at {order_start_price} {info.quote_asset} for {quantity} {info.base_asset}")
+        print(f"Creating buy IOK order at {order_start_price} {info.quote_asset} for {quantity} {info.base_asset}")
         order_id = str(uuid.uuid4())
         order = client.create_order(
             newClientOrderId=order_id,
@@ -119,6 +119,7 @@ def _main(api_key, api_secret, log_level, config_file):
             quantity=str(quantity),
             price=str(order_start_price))
 
+        #  data: {'symbol': 'BTCUSDT', 'orderId': 2474558, 'orderListId': -1, 'clientOrderId': 'e3010788-fca3-45d1-a437-cc90c9f4bd28', 'transactTime': 1620987128677, 'price': '48557.00000000', 'origQty': '0.00600000', 'executedQty': '0.00400500', 'cummulativeQuoteQty': '194.47078500', 'status': 'EXPIRED', 'timeInForce': 'IOC', 'type': 'LIMIT', 'side': 'BUY', 'fills': [{'price': '48557.00000000', 'qty': '0.00400500', 'commission': '0.00000000', 'commissionAsset': 'BTC', 'tradeId': 652155}]}
         print(f"Created order, data: {order}")
 
         # status is set to expired when we execute order only partially
@@ -126,6 +127,14 @@ def _main(api_key, api_secret, log_level, config_file):
 
         # We cannot fully execute (unless someone else is testing right now)
         assert float(order["executedQty"]) < float(order["origQty"])
+
+        # Calculate total executed price
+        fills = order["fills"]
+        total_liquidity_executed = 0
+        for f in fills:
+            total_liquidity_executed += float(f["price"]) * float(f["qty"])
+        executed_price = total_liquidity_executed / float(order["executedQty"])
+        print(f"Executed at price {executed_price} {info.quote_asset}, liquidity removed was {total_liquidity_executed} {info.quote_asset}")
 
         end_time = time.time() + 15
         while time.time() < end_time:
